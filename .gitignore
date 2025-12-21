@@ -1,0 +1,27 @@
+# Environments
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Application Data
+output/*.wav
+output/*.mp3
+voices/*.wav
+
+# Logs
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+
+# Large Model Files (Prevent GitHub rejection)
+# Uncomment the line below if your model folder is >100MB and you aren't using Git LFS
+# models/

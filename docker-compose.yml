@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  text-to-book:
+    build: .
+    image: text-to-book:latest
+    container_name: text-to-book
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist data
+      - ./output:/app/output
+      - ./voices:/app/voices
+      - ./models:/app/models
+    restart: unless-stopped

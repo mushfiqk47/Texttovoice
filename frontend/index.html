@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text To Voice - AI Audiobook Generator</title>
+    <meta name="description" content="Transform books into audiobooks with AI-powered Text-to-Speech">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="bg-gradient"></div>
+    <div class="bg-noise"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                        </svg>
+                    </div>
+                    <span class="logo-text">Text To Voice</span>
+                </div>
+                <button class="icon-btn" id="sidebar-toggle" title="Toggle Sidebar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-mode="quick">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" x2="12" y1="19" y2="22" />
+                    </svg>
+                    <span>Quick TTS</span>
+                </button>
+                <button class="nav-item" data-mode="book">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                    </svg>
+                    <span>Book Mode</span>
+                </button>
+                <button class="nav-item" data-mode="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    </svg>
+                    <span>Settings</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">System Ready</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <h1 id="page-title">Quick TTS</h1>
+                <div class="header-actions">
+                    <span class="badge" id="detected-lang" hidden>EN</span>
+                    <button class="secondary-btn" id="queue-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                        </svg>
+                        <span>Queue</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Workspace Container -->
+            <div class="workspace">
+                <!-- Quick TTS Mode -->
+                <section id="quick-mode" class="mode-panel active">
+                    <div class="workspace-grid">
+                        <!-- Input Panel -->
+                        <div class="panel input-panel">
+                            <div class="panel-header">
+                                <h2>Text Input</h2>
+                                <div class="model-badges">
+                                    <span class="info-badge">⚡ Turbo</span>
+                                    <span class="info-badge">🇺🇸 EN</span>
+                                </div>
+                            </div>
+
+                            <div class="input-wrapper">
+                                <textarea id="text-input"
+                                    placeholder="Type something amazing...&#10;Use tags like [laugh] or [sigh] for emotion."
+                                    spellcheck="false"></textarea>
+                                <div class="input-footer">
+                                    <div class="tag-bar">
+                                        <button class="tag-btn" data-tag="[laugh]" title="Laugh">😂</button>
+                                        <button class="tag-btn" data-tag="[chuckle]" title="Chuckle">😊</button>
+                                        <button class="tag-btn" data-tag="[sigh]" title="Sigh">😮‍💨</button>
+                                        <button class="tag-btn" data-tag="[gasp]" title="Gasp">😱</button>
+                                        <button class="tag-btn" data-tag="[whisper]" title="Whisper">🤫</button>
+                                        <button class="tag-btn" data-tag="[clear throat]" title="Clear Throat">🗣️</button>
+                                        <button class="tag-btn" data-tag="[shush]" title="Shush">🤫</button>
+                                        <button class="tag-btn" data-tag="[groan]" title="Groan">😩</button>
+                                        <button class="tag-btn" data-tag="[sniff]" title="Sniff">👃</button>
+                                        <button class="tag-btn" data-tag="[cough]" title="Cough">😷</button>
+                                    </div>
+                                    <div class="char-count"><span id="char-count">0</span> / 5000</div>
+                                </div>
+                            </div>
+
+                            <div class="voice-library-card" id="voice-library-card" role="button" tabindex="0">
+                                <div class="card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                                        <path d="M8 7h6" />
+                                        <path d="M8 11h6" />
+                                    </svg>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Voice Library</h3>
+                                    <p>Select from your saved voices</p>
+                                </div>
+                                <div class="card-arrow">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="upload-zone" id="upload-area">
+                                <div class="upload-content">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" x2="12" y1="3" y2="15" />
+                                    </svg>
+                                    <span>Upload Voice Reference (Optional)</span>
+                                </div>
+                                <input type="file" id="audio-upload" accept="audio/*" hidden>
+                            </div>
+
+                            <div class="file-card" id="uploaded-file" hidden>
+                                <div class="file-icon">🎵</div>
+                                <span id="file-name" class="file-name">reference.wav</span>
+                                <div class="file-actions">
+                                    <button id="save-voice-btn" class="icon-btn" title="Save to Library">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z">
+                                            </path>
+                                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                            <polyline points="7 3 7 8 15 8"></polyline>
+                                        </svg>
+                                    </button>
+                                    <button id="remove-file" class="icon-btn" title="Delete Reference"
+                                        style="color: var(--danger);">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Controls Panel -->
+                        <div class="panel controls-panel">
+                            <div class="panel-header">
+                                <h2>Voice Settings</h2>
+                                <button class="secondary-btn" id="reset-settings-btn" title="Reset to Defaults">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                        <polyline points="3 3 3 8 8 8" />
+                                    </svg>
+                                    <span>Reset</span>
+                                </button>
+                            </div>
+
+                            <div class="control-group">
+                                <div class="control-label">
+                                    <label>Expressiveness</label>
+                                    <span id="expressiveness-value">1.00</span>
+                                </div>
+                                <input type="range" id="expressiveness" min="0.25" max="2.0" step="0.05" value="1.0">
+                                <div class="range-labels">
+                                    <span>Flat</span>
+                                    <span>Dynamic</span>
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <div class="control-label">
+                                    <label>Guidance</label>
+                                    <span id="guidance-value">0.50</span>
+                                </div>
+                                <input type="range" id="guidance" min="0.0" max="1.0" step="0.05" value="0.5">
+                                <div class="range-labels">
+                                    <span>Creative</span>
+                                    <span>Precise</span>
+                                </div>
+                            </div>
+
+                            <div class="action-area">
+                                <button id="generate-btn" class="primary-btn">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3" />
+                                    </svg>
+                                    <span>Generate Speech</span>
+                                </button>
+                            </div>
+
+                            <div id="error-state" class="error-banner" hidden>
+                                <span id="error-message">Error occurred</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Book Mode -->
+                <section id="book-mode" class="mode-panel">
+                    <div class="book-workspace">
+                        <!-- Book Input -->
+                        <div class="panel book-input-panel">
+                            <div class="panel-header">
+                                <h2>Book Content</h2>
+                                <button class="secondary-btn" id="split-chapters-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 3h5v5M8 3H3v5M3 16v5h5M21 16v5h-5" />
+                                    </svg>
+                                    Split Chapters
+                                </button>
+                            </div>
+
+                            <div class="book-upload-zone" id="book-upload-area">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                                </svg>
+                                <h3>Drop your book here</h3>
+                                <p>Supports .txt, .epub, .pdf</p>
+                                <input type="file" id="book-file-upload" accept=".txt,.epub,.pdf" hidden>
+                            </div>
+
+                            <div class="book-text-wrapper" id="book-text-wrapper" hidden>
+                                <textarea id="book-text-input"
+                                    placeholder="Paste your entire book text here..."></textarea>
+                                <div class="book-stats">
+                                    <span id="book-char-count">0 characters</span>
+                                    <span id="book-word-count">0 words</span>
+                                    <span id="book-chapter-count">0 chapters</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chapters Panel -->
+                        <div class="panel chapters-panel">
+                            <div class="panel-header">
+                                <h2>Chapters</h2>
+                            </div>
+
+                            <div class="chapters-list" id="chapters-list">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                    </svg>
+                                    <p>Upload a book to see chapters</p>
+                                </div>
+                            </div>
+
+                            <div class="chapters-actions">
+                                <div id="book-progress-container" class="progress-container" hidden>
+                                    <div class="progress-bar-wrapper">
+                                        <div id="book-progress-bar" class="progress-bar"></div>
+                                    </div>
+                                    <span id="book-progress-text">0/0 Chapters Generated</span>
+                                </div>
+                                <button id="generate-all-btn" class="primary-btn" disabled>
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3" />
+                                    </svg>
+                                    <span>Generate All</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Mode -->
+                <section id="settings-mode" class="mode-panel">
+                    <div class="settings-grid">
+                        <div class="panel settings-panel">
+                            <div class="panel-header">
+                                <h2>Maintenance</h2>
+                            </div>
+                            <div class="settings-group">
+                                <p class="setting-desc">Free up fragmented GPU memory if performance slows down.</p>
+                                <button class="secondary-btn" id="clear-cache-btn" style="margin-top: var(--space-sm);">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path
+                                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                        <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                                        <polyline points="7.5 19.79 7.5 14.63 3 12" />
+                                        <polyline points="21 12 16.5 14.63 16.5 19.79" />
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                                    </svg>
+                                    Clear GPU Cache
+                                </button>
+                                <span id="cache-status" class="ai-status" hidden></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Output Panel (Always Visible) -->
+        <aside class="output-panel">
+            <div class="output-header">
+                <h2>Audio Output</h2>
+                <div class="header-actions">
+                    <button id="clear-queue-btn" class="icon-btn" title="Clear All" style="color: var(--danger);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path
+                                d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                    </button>
+                    <button id="download-all-btn" class="icon-btn" title="Download All" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" x2="12" y1="15" y2="3" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="audio-queue" id="audio-queue">
+                <div class="empty-queue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polygon points="10 8 16 12 10 16 10 8" />
+                    </svg>
+                    <p>Generated audio will appear here</p>
+                </div>
+            </div>
+
+            <!-- Current Player -->
+            <div class="current-player" id="current-player" hidden>
+                <div class="player-info">
+                    <span id="current-track-name">Generated Audio</span>
+                </div>
+
+                <div class="playback-controls">
+                    <button class="icon-btn" id="skip-back-btn" title="Skip back 15s">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+                        </svg>
+                    </button>
+
+                    <audio id="audio-player" controls></audio>
+
+                    <button class="icon-btn" id="skip-forward-btn" title="Skip forward 15s">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 17l5-5-5-5M6 17l5-5-5-5" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="player-footer">
+                    <div class="speed-control">
+                        <label for="playback-speed">Speed</label>
+                        <select id="playback-speed" class="speed-select">
+                            <option value="0.5">0.5x</option>
+                            <option value="1.0" selected>1.0x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2.0">2.0x</option>
+                        </select>
+                    </div>
+
+                    <div class="player-actions">
+                        <button id="download-mp3-btn" class="icon-btn" title="Download MP3">
+                            <span style="font-size: 0.7rem; font-weight: bold;">MP3</span>
+                        </button>
+                        <button id="download-current-btn" class="icon-btn" title="Download WAV">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" x2="12" y1="15" y2="3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="voice-library-modal" hidden>
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Voice Library</h2>
+                <button class="icon-btn" id="close-voice-library">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="voice-list" id="voice-list">
+                    <!-- Voices populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="particles"></div>
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

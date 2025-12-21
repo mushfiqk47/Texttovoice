@@ -1,0 +1,18 @@
+# Core TTS
+chatterbox-tts
+
+# API Framework
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+
+# Utilities
+langdetect
+python-dotenv
+slowapi
+
+# Testing
+pytest
+pytest-asyncio
+httpx
