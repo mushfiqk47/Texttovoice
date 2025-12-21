@@ -28,6 +28,7 @@ export class UIController {
     }
 
     bindEvents() {
+        console.log("UI: Binding events");
         // Navigation
         this.dom.NAV_ITEMS.forEach(item => {
             item.addEventListener('click', () => this.switchMode(item.dataset.mode));
@@ -244,6 +245,116 @@ export class UIController {
                     <polygon points="5 3 19 12 5 21 5 3"/>
                 </svg>
                 <span>Generate Speech</span>`;
+        }
+    }
+
+    // Voice Library Methods
+    async openVoiceLibrary() {
+        console.log("UI: Opening Voice Library");
+        if (!this.dom.VOICE_LIBRARY_MODAL) {
+            console.error("UI: Modal element not found");
+            return;
+        }
+
+        try {
+            const data = await api.getVoices();
+            console.log("Voices loaded:", data);
+            this.renderVoiceList(data.voices);
+            this.dom.VOICE_LIBRARY_MODAL.hidden = false;
+        } catch (e) {
+            console.error(e);
+            this.showError('Failed to load voice library');
+        }
+    }
+
+    renderVoiceList(voices) {
+        const list = document.getElementById(DOM_IDS.VOICE_LIST);
+        if (!list) return;
+
+        if (voices.length === 0) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <p>No saved voices yet</p>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = voices.map(voice => `
+            <div class="voice-item">
+                <div class="voice-info">
+                    <span class="voice-name">${voice.name}</span>
+                    <span class="voice-meta">${voice.size_kb} KB</span>
+                </div>
+                <div class="voice-actions">
+                    <button class="icon-btn select-voice-btn" data-filename="${voice.filename}" title="Use Voice">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn delete-voice-btn" data-name="${voice.name}" title="Delete" style="color: var(--danger);">
+                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Bind events
+        list.querySelectorAll('.select-voice-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectVoice(btn.dataset.filename);
+                this.dom.VOICE_LIBRARY_MODAL.hidden = true;
+            });
+        });
+
+        list.querySelectorAll('.delete-voice-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.handleVoiceDelete(btn.dataset.name));
+        });
+    }
+
+    selectVoice(filename) {
+        // Fetch the file and create a File object to simulate upload
+        fetch(`/voices/${filename}`)
+            .then(res => res.blob())
+            .then(blob => {
+                const file = new File([blob], filename, { type: blob.type });
+                this.handleFileSelect({ target: { files: [file] } });
+            })
+            .catch(e => this.showError('Failed to load voice'));
+    }
+
+    async handleVoiceDelete(name) {
+        if (!confirm(`Delete voice "${name}"?`)) return;
+
+        try {
+            await api.deleteVoice(name);
+            // Reload list
+            const data = await api.getVoices();
+            this.renderVoiceList(data.voices);
+        } catch (e) {
+            this.showError(e.message);
+        }
+    }
+
+    async saveVoice() {
+        console.log("UI: Saving Voice");
+        // Updated to use DOM_IDS.SAVE_VOICE_BTN if needed, but logic is called from event listener
+        const file = store.get('referenceAudioFile');
+        if (!file) {
+            this.showError('No audio file to save');
+            return;
+        }
+
+        const name = prompt("Enter a name for this voice preset:");
+        if (!name) return;
+
+        try {
+            await api.saveVoice(name, file);
+            alert('Voice saved to library!');
+        } catch (e) {
+            this.showError(e.message);
         }
     }
 

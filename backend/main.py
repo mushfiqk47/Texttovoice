@@ -422,12 +422,18 @@ def list_voices() -> dict:
     VOICES_DIR.mkdir(exist_ok=True)
     
     voices = []
-    for file in VOICES_DIR.glob("*.wav"):
-        voices.append({
-            "name": file.stem,
-            "filename": file.name,
-            "size_kb": round(file.stat().st_size / 1024, 1)
-        })
+    # Scan for all allowed extensions
+    for ext in ALLOWED_AUDIO_EXTENSIONS:
+        # glob is case sensitive on some OS, but extensions is set lower
+        for file in VOICES_DIR.glob(f"*{ext}"):
+             voices.append({
+                "name": file.stem,
+                "filename": file.name,
+                "size_kb": round(file.stat().st_size / 1024, 1)
+            })
+    
+    # Sort by name
+    voices.sort(key=lambda x: x["name"])
     
     return {"voices": voices}
 
@@ -450,8 +456,8 @@ async def save_voice(
     if ext not in ALLOWED_AUDIO_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid audio format")
     
-    # Save file as .wav (even if it's another format, we keep original for now)
-    voice_path = VOICES_DIR / f"{safe_name}.wav"
+    # Save file with original extension
+    voice_path = VOICES_DIR / f"{safe_name}{ext}"
     
     try:
         with open(voice_path, "wb") as f:
@@ -467,9 +473,15 @@ async def save_voice(
 def delete_voice(name: str) -> dict:
     """Delete a saved voice preset."""
     safe_name = Path(name).stem
-    voice_path = VOICES_DIR / f"{safe_name}.wav"
-    
-    if voice_path.exists() and voice_path.is_file():
+    # Find the file (we don't know the extension)
+    voice_path = None
+    for ext in ALLOWED_AUDIO_EXTENSIONS:
+        check_path = VOICES_DIR / f"{safe_name}{ext}"
+        if check_path.exists():
+            voice_path = check_path
+            break
+            
+    if voice_path and voice_path.is_file():
         try:
             voice_path.unlink()
             return {"status": "success", "message": f"Deleted voice: {safe_name}"}
