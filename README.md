@@ -62,36 +62,24 @@ Before you begin, make sure you have:
 ---
 
 ## 🚀 Installation & Usage
-
+ 
 This project is designed to be **Plug & Play**. You do not need to manually configure complex environments.
-
+ 
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/your-username/text-to-book.git
 cd text-to-book
 ```
-
-### 2. Run the Application
-Choose the method for your operating system:
-
-#### 🪟 Windows
-Double-click **`start_windows.bat`**.
-- It will automatically create the environment, install dependencies (checking for GPU), and start the app.
-- **Note:** If you are running from a USB drive (already set up), you can also use `start_portable.bat`.
-
-#### 🍎 Mac & 🐧 Linux
-Run the universal script in your terminal:
-```bash
-chmod +x run.sh   # (Only needed once)
-./run.sh
-```
-
-#### 🐳 Docker (Platform Agnostic)
-```bash
-docker-compose up --build
-```
-
-### 3. Open in Browser
+ 
+### 2. Setup (Run Once)
+Double-click **`setup.bat`**.
+- It will create a virtual environment.
+- It will ask if you want to install for **NVIDIA GPU** or **CPU**.
+- It will install all necessary dependencies automatically.
+ 
+### 3. Run the Application
+Double-click **`run.bat`**.
+ 
 The interface will open at: **http://localhost:8000**
 
 ---
@@ -175,10 +163,8 @@ Process entire books with automatic chapter detection.
 
 ```
 Text To BOOK/
-├── 📄 setup_gpu.cmd      # Setup for NVIDIA GPU
-├── 📄 setup_cpu.cmd      # Setup for CPU only
-├── 📄 run_gpu.cmd        # Run on GPU
-├── 📄 run.cmd            # Run on CPU
+├── 📄 setup.bat          # Unified setup script (CPU/GPU)
+├── 📄 run.bat            # Unified run script
 ├── 📄 app.py             # Main application entry point
 ├── 📄 requirements.txt   # Python dependencies
 │
