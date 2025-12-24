@@ -82,9 +82,24 @@ class TTSService:
         try:
             self.model = ChatterboxTurboTTS.from_local(str(MODEL_DIR), self.device)
             logger.info("✅ Model loaded successfully!")
+            
+            if self.device == "cuda":
+                # Enable Access to CuDNN Benchmark for consistent input sizes
+                torch.backends.cudnn.benchmark = True
+                
+                # Use torch.compile for faster inference (PyTorch 2+)
+                from .config import USE_TORCH_COMPILE
+                if USE_TORCH_COMPILE:
+                     try:
+                        logger.info("🚀 Compiling model with torch.compile...")
+                        self.model.model = torch.compile(self.model.model, mode="reduce-overhead")
+                     except Exception as e:
+                        logger.warning(f"torch.compile failed, falling back to eager mode: {e}")
+                        
             self._log_gpu_memory()
         except Exception as e:
-            logger.error(f"Failed to load model: {e}")
+            logger.critical(f"FATAL: Failed to load Chatterbox model: {e}", exc_info=True)
+            # We raise so the caller knows it failed, effectively 'crashing' the request if happening during generation
             raise
         
         return self.model, self.device
@@ -183,51 +198,55 @@ class TTSService:
             # However, ChatterboxTurboTTS doesn't have an easy "reset_conds"
             # We can re-load default or just be aware of this.
 
-    def _split_text(self, text: str, max_chunk_len: int = 250) -> list:
+        return chunks if chunks else [text]
+
+    def _split_text(self, text: str, max_chunk_len: int = 400) -> list:
         """
         Split text into natural chunks (sentences) for better TTS quality.
-        Avoids splitting inside brackets [] which are used for emotion tags.
+        Increased default chunk length to reduce overhead.
         """
-        # Protect tags by temporarily replacing spaces inside them
-        # (Naive approach, but works for simple [laugh] [sigh])
-        # Better approach: split by sentence terminators that are NOT inside brackets
+        # Simple but effective splitting by sentence terminators
+        # We use a lookbehind to keep the delimiter with the sentence
         
-        chunks = []
-        current_chunk = ""
-        
-        # Regex to find sentence boundaries: (. ! ?) followed by whitespace or end of string
-        # using lookbehind to keep the delimiter
-        # But this is complex to handle with brackets. 
-        # Simpler strategy: tokenize by sentence terminators, then regroup.
-        
-        # 1. Split by delimiters, keeping them
+        # 1. Clean up text
+        text = text.strip()
+        if not text:
+            return []
+            
+        # 2. Split by sentence endings (. ! ?)
+        # This regex splits by (.!?) but keeps the delimiter attached to the PREVIOUS chunk
+        # It's a bit complex, so we use the standard re.split with capture groups
         parts = re.split(r'([.!?]+)', text)
         
-        # 2. Re-combine parts to form sentences
+        # 3. Re-combine parts to form complete sentences
         sentences = []
         for i in range(0, len(parts) - 1, 2):
             sentences.append(parts[i] + parts[i+1])
-        if len(parts) % 2 == 1:
+        if len(parts) % 2 == 1 and parts[-1]:
             sentences.append(parts[-1])
             
-        # 3. Combine sentences into chunks
+        # 4. Combine sentences into optimal chunks
+        chunks = []
         current_chunk = ""
+        
         for sentence in sentences:
-            if not sentence.strip():
+            sentence = sentence.strip()
+            if not sentence:
                 continue
-                
-            # Check if adding this sentence exceeds max length
-            if len(current_chunk) + len(sentence) < max_chunk_len:
-                current_chunk += sentence
+            
+            # If a single sentence is too long, we might need to force split it (not implemented here for simplicity)
+            # but we check if adding it exceeds the limit
+            if len(current_chunk) + len(sentence) + 1 < max_chunk_len:
+                current_chunk += (" " + sentence) if current_chunk else sentence
             else:
                 if current_chunk:
-                    chunks.append(current_chunk.strip())
+                    chunks.append(current_chunk)
                 current_chunk = sentence
         
         if current_chunk:
-            chunks.append(current_chunk.strip())
+            chunks.append(current_chunk)
             
-        return chunks if chunks else [text]
+        return chunks
 
     def _normalize_audio(self, wav: torch.Tensor) -> torch.Tensor:
         """

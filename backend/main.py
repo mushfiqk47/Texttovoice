@@ -18,14 +18,37 @@ from .config import (
 from .utils import cleanup_old_files
 from .services import tts_service
 from .routers import system, tts, library
-from .main_utils import limiter  # We need to move limiter to a shared utils or keep in main for simplicity
+from .rate_limit import limiter
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import json
+import traceback
+
+class JsonFormatter(logging.Formatter):
+    """
+    Formatter that outputs JSON strings after parsing the LogRecord.
+    """
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_record)
 
 # =============================================================================
 # LOGGING CONFIGURATION
 # =============================================================================
+handler = logging.StreamHandler()
+handler.setFormatter(JsonFormatter())
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    handlers=[handler],
+    force=True # Override existing config
 )
 logger = logging.getLogger(__name__)
 
@@ -73,8 +96,24 @@ app = FastAPI(
 # For now, we attach it here. Routers that need it can import it from a common place.
 # Let's create 'backend/main_utils.py' for the limiter to be clean.
 app.state.limiter = limiter
+app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global catch-all exception handler to ensure JSON responses.
+    """
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal Server Error", 
+            "error_type": type(exc).__name__,
+            "request_id": str(request.headers.get("X-Request-ID", ""))
+        }
+    )
 
 # CORS Middleware
 app.add_middleware(

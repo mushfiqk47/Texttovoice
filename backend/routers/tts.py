@@ -36,7 +36,7 @@ class GenerateRequest(BaseModel):
         le=MAX_CFG_WEIGHT
     )
 
-from ..main_utils import limiter
+from ..rate_limit import limiter
 
 @router.post("/generate")
 @limiter.limit(f"{RATE_LIMIT_PER_MINUTE}/minute")

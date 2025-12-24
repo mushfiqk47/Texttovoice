@@ -401,6 +401,180 @@ export class UIController {
         }
     }
 
+    async handleBookFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        store.set('bookFile', file);
+        if (this.dom.BOOK_UPLOAD_AREA) this.dom.BOOK_UPLOAD_AREA.hidden = true;
+
+        // Show loading state
+        const textWrapper = document.getElementById(DOM_IDS.BOOK_TEXT_WRAPPER);
+        const textInput = document.getElementById(DOM_IDS.BOOK_TEXT_INPUT);
+
+        if (textWrapper) {
+            textWrapper.hidden = false;
+            if (textInput) textInput.value = "Reading file...";
+        }
+
+        try {
+            const data = await api.parseBook(file);
+            store.set('bookText', data.content);
+            store.set('bookChapters', []); // Reset chapters until split
+
+            // Update UI
+            if (textInput) textInput.value = data.content;
+            this.updateBookStats(data.content.length);
+
+        } catch (e) {
+            this.showError(e.message);
+            if (this.dom.BOOK_UPLOAD_AREA) this.dom.BOOK_UPLOAD_AREA.hidden = false;
+            if (textWrapper) textWrapper.hidden = true;
+        }
+    }
+
+    updateBookStats(charCount = 0, wordCount = 0, chapterCount = 0) {
+        const elChar = document.getElementById(DOM_IDS.BOOK_CHAR_COUNT);
+        const elWord = document.getElementById(DOM_IDS.BOOK_WORD_COUNT);
+        const elChap = document.getElementById(DOM_IDS.BOOK_CHAPTER_COUNT);
+
+        if (elChar) elChar.textContent = `${charCount} characters`;
+        // Estimate words if not provided
+        if (wordCount === 0 && charCount > 0) wordCount = Math.round(charCount / 5);
+        if (elWord) elWord.textContent = `${wordCount} words`;
+        if (elChap) elChap.textContent = `${chapterCount} chapters`;
+    }
+
+    splitChapters() {
+        const text = store.get('bookText');
+        if (!text) {
+            this.showError("No book content to split");
+            return;
+        }
+
+        // Simple splitting logic (double double newlines)
+        const possibleChapters = text.split(/\n\s*\n\s*\n/);
+
+        // If that didn't work well (too few), try single double newline
+        let pieces = possibleChapters;
+        if (pieces.length < 2) {
+            pieces = text.split(/\n\s*\n/);
+        }
+
+        const chapters = pieces
+            .map((content, idx) => ({
+                id: idx + 1,
+                title: `Chapter ${idx + 1}`,
+                content: content.trim()
+            }))
+            .filter(c => c.content.length > 50); // Filter tiny chunks
+
+        store.set('bookChapters', chapters);
+        this.renderChapters(chapters);
+        this.updateBookStats(text.length, 0, chapters.length);
+
+        if (this.dom.GENERATE_ALL_BTN) this.dom.GENERATE_ALL_BTN.disabled = false;
+    }
+
+    renderChapters(chapters) {
+        const list = document.getElementById(DOM_IDS.CHAPTERS_LIST);
+        if (!list) return;
+
+        if (chapters.length === 0) {
+            list.innerHTML = `<div class="empty-state"><p>No chapters found</p></div>`;
+            return;
+        }
+
+        list.innerHTML = chapters.map(c => `
+            <div class="chapter-item" style="padding: 10px; border-bottom: 1px solid var(--border);">
+                <div class="chapter-info">
+                    <span class="chapter-title" style="font-weight:bold;">${c.title}</span>
+                    <span class="chapter-meta" style="font-size:0.8rem; color:var(--text-secondary); margin-left:10px;">${c.content.length} chars</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async generateAllChapters() {
+        const chapters = store.get('bookChapters');
+        if (!chapters || chapters.length === 0) return;
+
+        this.ui_setBookGenerating(true);
+        const total = chapters.length;
+        let completed = 0;
+
+        // Settings
+        const settings = store.get('settings');
+        const refFile = store.get('referenceAudioFile');
+
+        for (const chapter of chapters) {
+            try {
+                // Update progress
+                this.updateBookProgress(completed, total, `Generating ${chapter.title}...`);
+
+                // Scroll to make sure user sees progress
+                const container = document.getElementById(DOM_IDS.BOOK_PROGRESS_CONTAINER);
+                if (container) container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Generate
+                const res = await api.generateSpeech(
+                    chapter.content,
+                    settings.expressiveness,
+                    settings.guidance,
+                    refFile
+                );
+
+                // Handle result
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+
+                // Get filename
+                const cd = res.headers.get('Content-Disposition');
+                const filename = cd ? cd.split('filename=')[1].replace(/"/g, '') : `chapter_${chapter.id}.wav`;
+
+                // Add to audio controller queue (access via window.app)
+                if (window.app && window.app.audio) {
+                    window.app.audio.addToQueue({
+                        name: `${chapter.title}`,
+                        filename: filename,
+                        url: url,
+                        timestamp: Date.now()
+                    });
+                }
+
+                completed++;
+                this.updateBookProgress(completed, total);
+
+            } catch (e) {
+                console.error(`Failed chapter ${chapter.id}:`, e);
+                this.updateBookProgress(completed, total, `Error on ${chapter.title}`);
+                await new Promise(r => setTimeout(r, 2000)); // Pause on error
+            }
+        }
+
+        this.updateBookProgress(total, total, "Done!");
+        setTimeout(() => this.ui_setBookGenerating(false), 2000);
+    }
+
+    ui_setBookGenerating(isGenerating) {
+        if (this.dom.GENERATE_ALL_BTN) {
+            this.dom.GENERATE_ALL_BTN.disabled = isGenerating;
+            this.dom.GENERATE_ALL_BTN.innerHTML = isGenerating ?
+                `<div class="loading-spinner"></div><span>Generating...</span>` :
+                `<span>Generate All</span>`;
+        }
+        const container = document.getElementById(DOM_IDS.BOOK_PROGRESS_CONTAINER);
+        if (container) container.hidden = !isGenerating;
+    }
+
+    updateBookProgress(current, total, text) {
+        const bar = document.getElementById(DOM_IDS.BOOK_PROGRESS_BAR);
+        const txt = document.getElementById(DOM_IDS.BOOK_PROGRESS_TEXT);
+
+        if (bar) bar.style.width = `${(current / total) * 100}%`;
+        if (txt) txt.textContent = text || `${current}/${total} Chapters Generated`;
+    }
+
     // Trigger callback
     onGenerateClick() {
         if (this.onGenerate) this.onGenerate();

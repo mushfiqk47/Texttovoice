@@ -1,91 +1,133 @@
 """
 Configuration settings for Chatterbox TTS Backend.
-Centralized settings with validation ranges.
+Centralized settings with validation ranges using Pydantic Settings.
 """
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-# =============================================================================
-# PATH CONFIGURATION
-# =============================================================================
-BASE_DIR = Path(__file__).resolve().parent.parent
-MODEL_DIR = BASE_DIR / "models" / "chatterbox-turbo"
-OUTPUT_DIR = BASE_DIR / "output"
-STATIC_DIR = BASE_DIR / "frontend"
+from typing import List, Set, FrozenSet
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, computed_field
 
 # =============================================================================
-# APPLICATION SETTINGS
+# SETTINGS CLASS
 # =============================================================================
-APP_TITLE = "Text To BOOK TTS API"
-APP_VERSION = "4.0.0"
-HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", "8000"))
 
-# =============================================================================
-# TTS PARAMETER SETTINGS
-# =============================================================================
-MAX_TEXT_LENGTH = int(os.getenv("MAX_TEXT_LENGTH", "5000"))
-MAX_AUDIO_SIZE_MB = int(os.getenv("MAX_AUDIO_SIZE_MB", "100"))
+class Settings(BaseSettings):
+    """
+    Application configuration with strict validation.
+    Reads from .env file automatically.
+    """
+    # Core App
+    APP_TITLE: str = "Text To BOOK TTS API"
+    APP_VERSION: str = "4.0.0"
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    
+    # Paths (Computed below, but can be overridden if needed)
+    # We use computed fields for derived paths usually, but BaseSettings 
+    # handles env vars mapping. Let's keep it simple.
+    
+    # TTS Parameters
+    MAX_TEXT_LENGTH: int = Field(5000, ge=1)
+    MAX_AUDIO_SIZE_MB: int = Field(100, ge=1)
+    
+    # Audio Formats
+    ALLOWED_AUDIO_EXTENSIONS: FrozenSet[str] = frozenset({".wav", ".mp3", ".flac", ".ogg", ".m4a"})
+    
+    # Exaggeration (expressiveness)
+    DEFAULT_EXAGGERATION: float = 1.0
+    MIN_EXAGGERATION: float = 0.25
+    MAX_EXAGGERATION: float = 2.0
+    
+    # CFG Weight (guidance)
+    DEFAULT_CFG_WEIGHT: float = 0.5
+    MIN_CFG_WEIGHT: float = 0.0
+    MAX_CFG_WEIGHT: float = 1.0
+    
+    # GPU Settings
+    GPU_ONLY: bool = False
+    GPU_MEMORY_FRACTION: float = 0.9
+    
+    # Cleanup
+    MAX_FILE_AGE_HOURS: int = 1
+    CLEANUP_INTERVAL_MINUTES: int = 30
+    
+    # Security
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000", "http://127.0.0.1:8000"]
+    RATE_LIMIT_PER_MINUTE: int = 10
+    
+    # Book Parsing
+    ALLOWED_BOOK_EXTENSIONS: FrozenSet[str] = frozenset({".txt", ".epub", ".pdf"})
+    
+    # Optimization
+    USE_TORCH_COMPILE: bool = True
+    USE_AMP: bool = True
+    
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        env_file_encoding="utf-8",
+        extra="ignore" # Ignore extra env vars
+    )
 
-# Allowed audio extensions for reference audio
-ALLOWED_AUDIO_EXTENSIONS = frozenset({".wav", ".mp3", ".flac", ".ogg", ".m4a"})
+    @property
+    def BASE_DIR(self) -> Path:
+        return Path(__file__).resolve().parent.parent
 
-# Exaggeration (expressiveness) range
-DEFAULT_EXAGGERATION = 1.0
-MIN_EXAGGERATION = 0.25
-MAX_EXAGGERATION = 2.0
+    @property
+    def MODEL_DIR(self) -> Path:
+        return self.BASE_DIR / "models" / "chatterbox-turbo"
 
-# CFG Weight (guidance) range
-DEFAULT_CFG_WEIGHT = 0.5
-MIN_CFG_WEIGHT = 0.0
-MAX_CFG_WEIGHT = 1.0
+    @property
+    def OUTPUT_DIR(self) -> Path:
+        return self.BASE_DIR / "output"
 
-# =============================================================================
-# GPU SETTINGS
-# =============================================================================
-# Force CUDA-only mode (will fail if no GPU)
-GPU_ONLY = False
+    @property
+    def STATIC_DIR(self) -> Path:
+        return self.BASE_DIR / "frontend"
 
-# Memory management
-GPU_MEMORY_FRACTION = float(os.getenv("GPU_MEMORY_FRACTION", "0.9"))
+    @property
+    def VOICES_DIR(self) -> Path:
+        return self.BASE_DIR / "voices"
 
-# =============================================================================
-# CLEANUP SETTINGS
-# =============================================================================
-MAX_FILE_AGE_HOURS = int(os.getenv("MAX_FILE_AGE_HOURS", "1"))
-CLEANUP_INTERVAL_MINUTES = int(os.getenv("CLEANUP_INTERVAL_MINUTES", "30"))
+# Instantiate global settings
+settings = Settings()
 
-# =============================================================================
-# SECURITY SETTINGS
-# =============================================================================
-# CORS origins (comma-separated list or "*" for all)
-# CORS origins
-# Default to localhost for security, allow override via env
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000").split(",")
+# Export variables for backward compatibility with existing code
+# (This allows us to refactor step-by-step or keep existing imports working)
+APP_TITLE = settings.APP_TITLE
+APP_VERSION = settings.APP_VERSION
+HOST = settings.HOST
+PORT = settings.PORT
 
-# Rate limiting (requests per minute per IP)
-RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "10"))
+MAX_TEXT_LENGTH = settings.MAX_TEXT_LENGTH
+MAX_AUDIO_SIZE_MB = settings.MAX_AUDIO_SIZE_MB
+ALLOWED_AUDIO_EXTENSIONS = settings.ALLOWED_AUDIO_EXTENSIONS
 
-# =============================================================================
-# VOICE LIBRARY SETTINGS
-# =============================================================================
-VOICES_DIR = BASE_DIR / "voices"
+DEFAULT_EXAGGERATION = settings.DEFAULT_EXAGGERATION
+MIN_EXAGGERATION = settings.MIN_EXAGGERATION
+MAX_EXAGGERATION = settings.MAX_EXAGGERATION
 
-# =============================================================================
-# BOOK PARSING SETTINGS
-# =============================================================================
-ALLOWED_BOOK_EXTENSIONS = frozenset({".txt", ".epub", ".pdf"})
+DEFAULT_CFG_WEIGHT = settings.DEFAULT_CFG_WEIGHT
+MIN_CFG_WEIGHT = settings.MIN_CFG_WEIGHT
+MAX_CFG_WEIGHT = settings.MAX_CFG_WEIGHT
 
-# =============================================================================
-# GPU OPTIMIZATION FLAGS
-# =============================================================================
-# Use torch.compile for faster inference (PyTorch 2.0+)
-USE_TORCH_COMPILE = os.getenv("USE_TORCH_COMPILE", "true").lower() == "true"
+GPU_ONLY = settings.GPU_ONLY
+GPU_MEMORY_FRACTION = settings.GPU_MEMORY_FRACTION
 
-# Use Automatic Mixed Precision (FP16) for faster generation
-USE_AMP = os.getenv("USE_AMP", "true").lower() == "true"
+MAX_FILE_AGE_HOURS = settings.MAX_FILE_AGE_HOURS
+CLEANUP_INTERVAL_MINUTES = settings.CLEANUP_INTERVAL_MINUTES
+
+CORS_ORIGINS = settings.CORS_ORIGINS
+RATE_LIMIT_PER_MINUTE = settings.RATE_LIMIT_PER_MINUTE
+
+ALLOWED_BOOK_EXTENSIONS = settings.ALLOWED_BOOK_EXTENSIONS
+USE_TORCH_COMPILE = settings.USE_TORCH_COMPILE
+USE_AMP = settings.USE_AMP
+
+# Path Exports
+BASE_DIR = settings.BASE_DIR
+MODEL_DIR = settings.MODEL_DIR
+OUTPUT_DIR = settings.OUTPUT_DIR
+STATIC_DIR = settings.STATIC_DIR
+VOICES_DIR = settings.VOICES_DIR

@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+
+# Project Specific
+output/
+voices/
+models/
+tests/
+*.bat
+*.cmd
+Dockerfile
+Dockerfile.gpu
+README.md

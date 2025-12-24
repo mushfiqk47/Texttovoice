@@ -185,10 +185,9 @@ async def parse_book_file(
             tmp_path = Path(tmp.name)
         
         # Parse content
-        # Run in threadpool if parsing is heavy? It likely is for PDF. 
-        # But 'parse_book' is synchronous. 
-        # Ideally we wrap this too, but let's stick to TTS optimization first.
-        content = parse_book(tmp_path)
+        # Run in threadpool to prevent blocking the event loop during heavy parsing (PDFs)
+        from fastapi.concurrency import run_in_threadpool
+        content = await run_in_threadpool(parse_book, tmp_path)
         
         # Cleanup
         tmp_path.unlink()

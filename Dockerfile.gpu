@@ -1,0 +1,43 @@
+# Use NVIDIA CUDA base image for GPU support
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3.10-venv \
+    ffmpeg \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Alias python to python3
+RUN ln -s /usr/bin/python3.10 /usr/bin/python
+
+# Copy requirements first
+COPY requirements.txt .
+
+# Install Python dependencies
+# We install torch with CUDA support specifically
+RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p output voices models/chatterbox-turbo
+
+# Expose the port
+EXPOSE 8000
+
+# Run the application
+CMD ["python", "backend/main.py"]
