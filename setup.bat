@@ -82,7 +82,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo [INFO] Upgrading pip...
 python -m pip install --upgrade pip
 
-:: 5. GPU Selection
+:: 5. Install Dependencies & Hardware Selection
 echo.
 echo ============================================================
 echo                Hardware Selection
@@ -92,32 +92,30 @@ echo 2. I do not have a GPU / I want to use CPU (Slower, compatible with all PCs
 echo.
 set /p choice="Enter your choice (1 or 2): "
 
+echo.
+echo [INFO] Installing project requirements first...
+pip install -r requirements.txt
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Failed to install requirements.
+    pause
+    exit /b 1
+)
+
 if "%choice%"=="1" (
     echo.
-    echo [INFO] Installing PyTorch with CUDA 12.1 support...
-    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+    echo [INFO] Enforcing CUDA 12.1 PyTorch installation...
+    :: Force reinstall to ensure we have the GPU version, overwriting any CPU version from requirements
+    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
 ) else (
     echo.
-    echo [INFO] Installing PyTorch for CPU...
-    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+    echo [INFO] Ensuring CPU PyTorch installation...
+    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu --force-reinstall
 )
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [ERROR] PyTorch installation failed.
     echo.
-    pause
-    exit /b 1
-)
-
-:: 6. Install other dependencies
-echo.
-echo [INFO] Installing project dependencies...
-pip install -r requirements.txt
-
-if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo [ERROR] Failed to install dependencies.
     pause
     exit /b 1
 )
