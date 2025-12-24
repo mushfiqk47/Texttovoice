@@ -21,8 +21,14 @@ class ApiClient {
         });
 
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: 'Generation failed' }));
-            throw new Error(err.detail);
+            let errorMsg = 'Generation failed';
+            try {
+                const err = await res.json();
+                errorMsg = err.detail || errorMsg;
+            } catch (e) {
+                errorMsg = `Server Error (${res.status}): ${res.statusText}`;
+            }
+            throw new Error(errorMsg);
         }
 
         return res;
@@ -38,8 +44,14 @@ class ApiClient {
         });
 
         if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Failed to parse book');
+            let errorMsg = 'Failed to parse book';
+            try {
+                const err = await res.json();
+                errorMsg = err.detail || errorMsg;
+            } catch (e) {
+                errorMsg = `Server Error (${res.status})`;
+            }
+            throw new Error(errorMsg);
         }
         return await res.json();
     }
@@ -60,8 +72,14 @@ class ApiClient {
         });
 
         if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail);
+            let errorMsg = 'Failed to save voice';
+            try {
+                const err = await res.json();
+                errorMsg = err.detail || errorMsg;
+            } catch (e) {
+                errorMsg = `Server Error (${res.status})`;
+            }
+            throw new Error(errorMsg);
         }
         return await res.json();
     }

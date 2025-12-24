@@ -66,6 +66,7 @@ export class UIController {
         // Actions
         this.dom.GENERATE_BTN?.addEventListener('click', () => this.onGenerateClick());
         this.dom.RESET_SETTINGS_BTN?.addEventListener('click', () => this.resetSettings());
+        this.dom.CLEAR_CACHE_BTN?.addEventListener('click', () => this.clearGpuCache());
 
         // Book Handling
         this.dom.BOOK_UPLOAD_AREA?.addEventListener('click', () => this.dom.BOOK_FILE_UPLOAD?.click());
@@ -355,6 +356,48 @@ export class UIController {
             alert('Voice saved to library!');
         } catch (e) {
             this.showError(e.message);
+        }
+    }
+
+    async clearGpuCache() {
+        const btn = this.dom.CLEAR_CACHE_BTN;
+        const status = this.dom.CACHE_STATUS;
+        if (!btn) return;
+
+        try {
+            btn.disabled = true;
+            if (status) {
+                status.hidden = false;
+                status.textContent = "Clearing...";
+                status.style.color = "var(--text-muted)";
+            }
+
+            const res = await api.clearGpuCache();
+
+            if (status) {
+                status.textContent = "Cache Cleared";
+                status.style.color = "var(--success)";
+
+                // Show memory usage if available
+                if (res.memory_allocated_mb) {
+                    setTimeout(() => {
+                        status.textContent = `${res.memory_allocated_mb}MB / ${res.memory_reserved_mb}MB`;
+                    }, 1500);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            if (status) {
+                status.textContent = "Failed";
+                status.style.color = "var(--danger)";
+            }
+            this.showError('Failed to clear GPU cache');
+        } finally {
+            btn.disabled = false;
+            // Hide status after delay
+            setTimeout(() => {
+                if (status) status.hidden = true;
+            }, 5000);
         }
     }
 
